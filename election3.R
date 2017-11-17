@@ -1,5 +1,5 @@
 
-election <- read.csv('cleanElectiond.csv')
+election <- read.csv('cleanElectiond.csv', stringsAsFactors = F)
 
 eNames <- read.csv('Enames.csv')
 names(election)
@@ -18,10 +18,11 @@ sub16 <- cbind(sub16,year)
 
 #variables as numeric
 sub16[,10:73] <- sapply(sub16[,10:73], as.numeric)
+sub16 <- na.omit(sub16)
 
 sub16$DrugFR<- sub16[,"DrugFR"]/100
 sub16$unempR<- sub16[,"unempR"]/100
-sub16[,41:72]<- sub16[,41:72]/100
+
 
 
 #2012 subset
@@ -37,19 +38,14 @@ names(sub12) <- names(eNames)
 year <- rep('2012',nrow(sub12))
 sub12 <- cbind(sub12,year)
 
-
 #variables as numeric
 sub12[,10:73] <- sapply(sub12[,10:73], as.numeric)
+sub12 <- na.omit(sub12)
 
 sub12$DrugFR<- sub12[,"DrugFR"]/100
 sub12$unempR<- sub12[,"unempR"]/100
-sub12[,41:72]<- sub12[,41:72]/100
 
 summary(sub12)
-
-#removing nulls because I'm lazy for now  (about 10 counties)
-colSums(is.na(sub12))
-colSums(is.na(sub16))
 
 #sub16 <- subset(sub16,!is.na(longitude))
 #sub16 <- subset(sub16,!is.na(mfgEmp))
@@ -59,9 +55,6 @@ sub12t <- subset(sub12t,!is.na(mfgEmp))
 sub12t <- subset(sub12t,!is.na(pctWhite))
 sub12t <- subset(sub12t,!is.na(incomePercent))
 
-
-colSums(is.na(sub12t))
-colSums(is.na(sub16))
 
 #Test/Validation with even RorD 
 #install.packages('caTools')

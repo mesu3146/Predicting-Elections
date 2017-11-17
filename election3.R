@@ -269,3 +269,40 @@ vote16 <- table(validation$RorD,pred.vote16)
 1- sum(validation$RorD)/nrow(validation)
 1- sum(sub12t$RorD)/nrow(sub12t)
 
+#boosting 2: probability (for votes by state) 
+library(gbm)
+set.seed(300)
+
+boost.vote2 <- gbm(RorD~ mfgEmp + medInc + intMig + domMig + civLab + EmpTtl + WageMfg + WageTtl + 
+                     landArea + popDens + latitude + longitude + Ydiscuss + YCO2limits + Yfundrenewables +Yhappening +
+                     Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
+                     YharmUS,data=sub12t,distribution = "bernoulli",n.trees=1000)
+
+pred.vote2 <- predict(boost.vote2,n.trees=1000,type="response")
+table(sub12t$RorD,pred.vote2)
+summary(boost.vote2)
+#predict 2016 boosting (for votes by state)
+pred.vote16.2 <- predict(boost.vote2,sub16,n.trees=1000,type="response")
+vote16.2 <- table(sub16$RorD,pred.vote16.2)
+sub16v <-cbind(sub16,pred.vote16.2)
+
+#votes per county
+sub16v$Dvote <- round(sub16v$Totalvote*pred.vote16.2,0)
+sub16v$Rvote <- sub16v$Totalvote - sub16v$Dvote
+
+#aggregate votes by state
+library("data.table")
+sub16v <- as.data.table(sub16v)
+setkey(sub16v,state)
+head(sub16)
+sub16v <- sub16v[,list(republicanP = sum(Rvote, na.rm = TRUE),republicanA = sum(rep, na.rm = TRUE),
+                       democratP = sum(Dvote, na.rm = TRUE), democratA = sum(dem, na.rm = TRUE)), by = 'state']
+
+#if rep votes > than dem votes, 0 else 1
+sub16v$RorDp <- ifelse(sub16v$republicanP > sub16v$democratP, 0 ,1)  
+sub16v$RorDa <- ifelse(sub16v$republicanA > sub16v$democratA, 0 ,1)  
+
+#predicted democratic states
+sum(sub16v$RorDp)
+#actual democratic states
+sum(sub16v$RorDa)

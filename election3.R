@@ -269,3 +269,4 @@ vote16 <- table(validation$RorD,pred.vote16)
 1- sum(validation$RorD)/nrow(validation)
 1- sum(sub12t$RorD)/nrow(sub12t)
 
+ddz 

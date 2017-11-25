@@ -4,6 +4,7 @@ election <- read.csv('cleanElectiond.csv', stringsAsFactors = F)
 eNames <- read.csv('Enames.csv')
 names(election)
 eNames
+
 #create 2016 subset for testing
 sub16 <- election[,!names(election) %in% c('mfgEmp12', 'DrugFR12','Obese12','Pov12',
                                            'medInc12','incomePercent12','pop12','intMig12','RorD08','mfgEmp12', 'DrugFR08','Obese08','Pov08',
@@ -16,13 +17,21 @@ names(sub16) <- names(eNames)
 year <- rep('2016',nrow(sub16))
 sub16 <- cbind(sub16,year)
 
-#variables as numeric
+# Convert variables to numeric
 sub16[,10:73] <- sapply(sub16[,10:73], as.numeric)
-sub16 <- na.omit(sub16)
-
 sub16$DrugFR<- sub16[,"DrugFR"]/100
 sub16$unempR<- sub16[,"unempR"]/100
 
+## DEALING WITH NAs
+  # Option 1: Remove NAs
+    # sub16 <- na.omit(sub16)
+
+  # Option 2: Impute NA values with mean
+    if (!'imputeR' %in% installed.packages()){
+      install.packages('imputeR')
+    }
+    library(imputeR)
+    sub16[sapply(sub16, is.numeric)] = guess(sub16[sapply(sub16, is.numeric)], type='mean')
 
 
 #2012 subset
@@ -38,22 +47,21 @@ names(sub12) <- names(eNames)
 year <- rep('2012',nrow(sub12))
 sub12 <- cbind(sub12,year)
 
-#variables as numeric
+# Convert variables to numeric
 sub12[,10:73] <- sapply(sub12[,10:73], as.numeric)
-sub12 <- na.omit(sub12)
-
 sub12$DrugFR<- sub12[,"DrugFR"]/100
 sub12$unempR<- sub12[,"unempR"]/100
 
-summary(sub12)
+## DEALING WITH NAs
+  # Option 1: Remove NAs
+    # sub12 <- na.omit(sub12)
 
-#sub16 <- subset(sub16,!is.na(longitude))
-#sub16 <- subset(sub16,!is.na(mfgEmp))
-
-sub12t <- subset(sub12,!is.na(longitude))
-sub12t <- subset(sub12t,!is.na(mfgEmp))
-sub12t <- subset(sub12t,!is.na(pctWhite))
-sub12t <- subset(sub12t,!is.na(incomePercent))
+  # Option 2: Impute NA values with mean
+    if (!'imputeR' %in% installed.packages()){
+    install.packages('imputeR')
+    }
+    library(imputeR)
+    sub12[sapply(sub12, is.numeric)] = guess(sub12[sapply(sub12, is.numeric)], type='mean')
 
 
 #Test/Validation with even RorD 
@@ -82,21 +90,17 @@ validation$outcome <- ifelse(validation$RorD == 1,'Dem','Rep')
 validation$outcome <-as.factor(validation$outcome)
 test$outcome <- ifelse(test$RorD == 1,'Dem','Rep')
 test$outcome <- as.factor(test$outcome)
-sub12t$outcome <-ifelse(sub12t$RorD ==1,'Dem','Rep')
-sub12t$outcome <- as.factor(sub12t$outcome)
-
 
 #correlation, might want to remove some variables 
-cor(subset(sub12t,select = -c(fips, county, outcome, RorD,state,year,region)))
+cor(subset(sub12,select = -c(fips, county, outcome, RorD,state,year,region)))
 names(sub12)
 #add population density
 sub12$popDens <- sub12$pop/sub12$landArea
 sub16$popDens <- sub16$pop/sub16$landArea
-sub12t$popDens <- sub12t$pop/sub12t$landArea
 validation$popDens <- validation$pop/validation$landArea
 test$popDens <- test$pop/test$landArea
   
-names(sub12)
+
 #normalize data
 sub12$popN <- scale(sub12$pop)
 sub12$mfgEmpN <- scale(sub12$mfgEmp)
@@ -111,20 +115,6 @@ sub12$landAreaN <- scale(sub12$landArea)
 sub12$popDensN <- scale(sub12$popDens)
 sub12$latitudeN <- scale(sub12$latitude)
 sub12$longitudeN <- scale(sub12$longitude)
-
-sub12t$popN <- scale(sub12t$pop)
-sub12t$mfgEmpN <- scale(sub12t$mfgEmp)
-sub12t$medIncN <- scale(sub12t$medInc)
-sub12t$intMigN <- scale(sub12t$intMig)
-sub12t$domMigN <- scale(sub12t$domMig)
-sub12t$civLabN <- scale(sub12t$civLab)
-sub12t$EmpTtlN <- scale(sub12t$EmpTtl)
-sub12t$WageMfgN <- scale(sub12t$WageMfg)
-sub12t$WageTtlN <- scale(sub12t$WageTtl)
-sub12t$landAreaN <- scale(sub12t$landArea)
-sub12t$popDensN <- scale(sub12t$popDens)
-sub12t$latitudeN <- scale(sub12t$latitude)
-sub12t$longitudeN <- scale(sub12t$longitude)
 
 sub16$popN <- scale(sub16$pop)
 sub16$mfgEmpN <- scale(sub16$mfgEmp)
@@ -171,8 +161,7 @@ test$longitudeN <- scale(test$longitude)
 #PCA
 #install.packages('stats')
 library(stats)
-names(sub12t)
-sub12sub <- subset(sub12t,select = c(YdiscussOppose,Ydiscuss,	YCO2limits, YCO2limitsOppose,	YtrustclimsciSST,	YtrustclimsciSSTOppose,
+sub12sub <- subset(sub12,select = c(YdiscussOppose,Ydiscuss,	YCO2limits, YCO2limitsOppose,	YtrustclimsciSST,	YtrustclimsciSSTOppose,
                                      Yregulate,	YregulateOppose,	YsupportRPS,	YsupportRPSOppose,	Yfundrenewables,	YfundrenewablesOppose, Yhappening,
                                      YhappeningOppose,	Yhuman,	YhumanOppose,	Yconsensus,	YconsensusOppose,	Yworried,	YworriedOppose,	Ypersonal,
                                      YpersonalOppose,	YharmUS,	YharmUSOppose,	Ydevharm,	YdevharmOppose,	Yfuturegen,	YfuturegenOppose,
@@ -182,9 +171,7 @@ logsub <- log(sub12sub)
 logsub$RorD <- sub12sub$RorD
 
 pc.RorD <- sub12sub[,'RorD']
-sub12.pca <- prcomp(sub12sub,
-                 center = TRUE,
-                 scale. = TRUE) 
+sub12.pca <- prcomp(sub12sub, center = TRUE, scale. = TRUE) 
 
 summary(sub12.pca)
 
@@ -216,16 +203,15 @@ summary(PC)
 names(PC)
 
 #random forest
-names(sub12t)
 library(randomForest)
 set.seed(300)
 forest.vote = randomForest(outcome~  pop + mfgEmp + medInc + intMig + domMig + civLab + EmpTtl + WageMfg + WageTtl + 
                              landArea + popDens + latitude + longitude + Ydiscuss + YCO2limits + Yfundrenewables +Yhappening +
                            Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
-                          YharmUS,data=sub12t)
+                          YharmUS,data=sub12)
 
 pred.forest = predict(forest.vote)
-table(sub12t$outcome,pred.forest)
+table(sub12$outcome,pred.forest)
 
 
 #predict 2016 forest
@@ -244,11 +230,11 @@ set.seed(300)
 boost.vote <- gbm(RorD~  mfgEmp + medInc + intMig + domMig + civLab + EmpTtl + WageMfg + WageTtl + 
                     landArea + popDens + latitude + longitude + Ydiscuss + YCO2limits + Yfundrenewables +Yhappening +
                     Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
-                    YharmUS,data=sub12t,distribution = "bernoulli",n.trees=1000)
+                    YharmUS, data=sub12, distribution = "bernoulli", n.trees=1000)
 
 pred.vote <- predict(boost.vote,n.trees=1000,type="response")
 pred.vote <- round(pred.vote,0)
-table(sub12t$RorD,pred.vote)
+table(sub12$RorD, pred.vote)
 summary(boost.vote)
 #predict 2016 boosting
 pred.vote16 <- predict(boost.vote,validation,n.trees=1000,type="response")
@@ -260,7 +246,7 @@ vote16 <- table(validation$RorD,pred.vote16)
 
 #majority class proportion 2016
 1- sum(validation$RorD)/nrow(validation)
-1- sum(sub12t$RorD)/nrow(sub12t)
+1- sum(sub12$RorD)/nrow(sub12)
 
 #boosting 2: probability (for votes by state) 
 library(gbm)
@@ -269,10 +255,10 @@ set.seed(300)
 boost.vote2 <- gbm(RorD~ mfgEmp + medInc + intMig + domMig + civLab + EmpTtl + WageMfg + WageTtl + 
                      landArea + popDens + latitude + longitude + Ydiscuss + YCO2limits + Yfundrenewables +Yhappening +
                      Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
-                     YharmUS,data=sub12t,distribution = "bernoulli",n.trees=1000)
+                     YharmUS,data=sub12,distribution = "bernoulli",n.trees=1000)
 
 pred.vote2 <- predict(boost.vote2,n.trees=1000,type="response")
-table(sub12t$RorD,pred.vote2)
+table(sub12$RorD,pred.vote2)
 summary(boost.vote2)
 #predict 2016 boosting (for votes by state)
 pred.vote16.2 <- predict(boost.vote2,sub16,n.trees=1000,type="response")
@@ -304,23 +290,23 @@ sum(sub16v$RorDa)
 #regression
 
 #first:
-sub12t$outcomebinomial <- NA
-for (i in 1:length(sub12t)) {
-	if (sub12t$outcome[i] == "Rep") {
-		sub12t$outcomebinomial[i] <- 1
+sub12$outcomebinomial <- NA
+for (i in 1:length(sub12)) {
+	if (sub12$outcome[i] == "Rep") {
+		sub12$outcomebinomial[i] <- 1
 	} else {
-		sub12t$outcomebinomial[i] <- 0
+		sub12$outcomebinomial[i] <- 0
 	}
 }
 
 logit.vote = glm(outcomebinomial~  pop + mfgEmp + medInc + intMig + domMig + civLab + EmpTtl + WageMfg + WageTtl + 
                              landArea + popDens + latitude + longitude 
                              + Ydiscuss + YCO2limits + Yfundrenewables +Yhappening + Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
-                          YharmUS,data=sub12t, family=binomial)
+                             YharmUS, data=sub12, family=binomial)
 summary(logit.vote)
 #second:
 logit.vote2 = glm(outcomebinomial~  mfgEmp + domMig + WageMfg + WageTtl + 
-                             landArea + popDens + longitude + Ydiscuss + YCO2limits + Yfundrenewables 							+ Yhuman  + Yconsensus +	Yworried+	Ypersonal ,data=sub12t, family=binomial)
+                             landArea + popDens + longitude + Ydiscuss + YCO2limits + Yfundrenewables) 							+ Yhuman  + Yconsensus +	Yworried+	Ypersonal ,data=sub12t, family=binomial)
 summary(logit.vote2)
 
 test$outcomebinomial <- NA
@@ -339,7 +325,7 @@ print(paste('Accuracy',1-misClassError2))
 #Logistic Regression Model 3
 
 logit.vote3 = glm(outcomebinomial~  WageTtl + 
-                             popDens + longitude + YCO2limits + Yhuman  + Yconsensus +	Ypersonal ,data=sub12t, family=binomial)
+                             popDens + longitude + YCO2limits + Yhuman  + Yconsensus +	Ypersonal ,data=sub12, family=binomial)
 summary(logit.vote3)
 pred.logit3 <- predict(logit.vote3, newdata=test, type="response")
 fitted.results3 <- ifelse(pred.logit3 > 0.5, 1, 0)
@@ -351,7 +337,7 @@ print(paste('Accuracy',1-misClassError3))
 logit.vote4 = glm(outcomebinomial~  DrugFR+Obese+Pov+medInc+incomePercent+pop+civLab+emp+unempR+
 			college+pctBlack+pctAsian+pctHispanic+pctWhite+pctForeign+WageMfg+popDens+landArea+
 			 + Ydiscuss + YCO2limits + Yfundrenewables + Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
-                          YharmUS ,data=sub12t, family=binomial)
+                          YharmUS, data=sub12, family=binomial)
 summary(logit.vote4)
 pred.logit4 <- predict(logit.vote4, newdata=test, type="response")
 fitted.results4 <- ifelse(pred.logit4 > 0.5, 1, 0)
@@ -362,8 +348,8 @@ print(paste('Accuracy',1-misClassError4))
 set.seed(300)
 forest.vote4 = randomForest(outcome~  DrugFR+Obese+Pov+medInc+incomePercent+pop+civLab+emp+unempR+
 			college+pctBlack+pctAsian+pctHispanic+pctWhite+pctForeign+WageMfg+popDens+landArea+
-			 + Ydiscuss + YCO2limits + Yfundrenewables + Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
-                          YharmUS ,data=sub12t)
+			 + Ydiscuss + YCO2limits + Yfundrenewables + Yhuman +	YharmplantsOppose + Ytiming + Yconsensus + 
+			 Yworried + Ypersonal + YharmUS ,data=sub12)
 summary(forest.vote4)
 importance(forest.vote4)
 pred.forest4=predict(forest.vote4)
@@ -385,3 +371,15 @@ for (i in 1:length(test)) {
 fitted.results4f <- ifelse(test$forestoutcome > 0.5, 1, 0)
 misClassError4f <- mean(fitted.results4f != test$outcomebinomial, na.rm=TRUE)
 print(paste('Accuracy',1-misClassError4f))
+
+# NEURAL NET
+library(neuralnet)
+# train the neural network
+set.seed(300)
+vote.net <- neuralnet(RorD~  popN + mfgEmpN + medIncN + intMigN + domMigN + civLabN + EmpTtlN + WageMfgN + WageTtlN + 
+                        landAreaN + popDensN + latitudeN + longitudeN + Ydiscuss + YCO2limits + Yfundrenewables +Yhappening +
+                        Yhuman + YharmplantsOppose + Ytiming + Yconsensus + Yworried + Ypersonal +
+                        YharmUS, data=test, hidden=c(4,3,2))
+plot(vote.net)
+vote.net 
+

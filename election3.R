@@ -385,3 +385,49 @@ for (i in 1:length(test)) {
 fitted.results4f <- ifelse(test$forestoutcome > 0.5, 1, 0)
 misClassError4f <- mean(fitted.results4f != test$outcomebinomial, na.rm=TRUE)
 print(paste('Accuracy',1-misClassError4f))
+
+##KNN
+# remove all the missing values
+sub12.omit=na.omit(sub12)
+sub16.omit=na.omit(sub16)
+
+# remove all the non-numeric columns
+sub12.omit$county<-NULL
+sub12.omit$state<-NULL
+sub12.omit$region<-NULL
+sub12.omit$year<-NULL
+sub16.omit$state<-NULL
+sub16.omit$county<-NULL
+sub16.omit$region<-NULL
+sub16.omit$year<-NULL
+
+# rename columns
+elec.train = sub12.omit
+elec.test = sub16.omit
+
+#x<-NA
+#for(i in 1:length(elec.train)) {
+#x[i]<-sum(is.na(elec.train[i]))
+#  }
+#x
+#sum(sapply(elec.test,is.numeric))
+
+# find k value which maximize accuracy
+vk = seq(1,51,2)
+accuracy = vk
+for (i in 1:length(vk)){
+  election.knn = knn(scale(elec.train[,sapply(elec.train,is.numeric)]),scale(elec.test[,sapply(elec.test,is.numeric)]),elec.train$outcome,k=vk[i])
+  accuracy[i] = mean(elec.test$outcome==election.knn)  
+}
+plot(vk,accuracy,xlab='k',ylab='test accuracy',col='blue')
+accuracy
+max(accuracy)
+# k=37
+
+# knn function
+election.knn = knn(scale(elec.train[,sapply(elec.train,is.numeric)]),scale(elec.test[,sapply(elec.test,is.numeric)]),elec.train$outcome,k=37)
+election.knn
+table(elec.test$outcome,election.knn)
+##accuracy
+(480+2426)/(480+9+201+2426)
+##93.26%

@@ -383,3 +383,88 @@ vote.net <- neuralnet(RorD~  popN + mfgEmpN + medIncN + intMigN + domMigN + civL
 plot(vote.net)
 vote.net 
 
+
+#first:
+sub12t$outcomebinomial <- NA
+for (i in 1:length(sub12t)) {
+	if (sub12t$outcome[i] == "Rep") {
+		sub12t$outcomebinomial[i] <- 1
+	} else {
+		sub12t$outcomebinomial[i] <- 0
+	}
+}
+
+logit.vote = glm(outcomebinomial~  pop + mfgEmp + medInc + intMig + domMig + civLab + EmpTtl + WageMfg + WageTtl + 
+                             landArea + popDens + latitude + longitude 
+                             + Ydiscuss + YCO2limits + Yfundrenewables +Yhappening + Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
+                          YharmUS,data=sub12t, family=binomial)
+summary(logit.vote)
+#second:
+logit.vote2 = glm(outcomebinomial~  mfgEmp + domMig + WageMfg + WageTtl + 
+                             landArea + popDens + longitude + Ydiscuss + YCO2limits + Yfundrenewables 							+ Yhuman  + Yconsensus +	Yworried+	Ypersonal ,data=sub12t, family=binomial)
+summary(logit.vote2)
+
+test$outcomebinomial <- NA
+for (i in 1:length(test)) {
+	if (test$outcome[i] == "Rep") {
+		test$outcomebinomial[i] <- 1
+	} else {
+		test$outcomebinomial[i] <- 0
+	}
+}
+pred.logit2 <- predict(logit.vote2, newdata=test, type="response")
+fitted.results2 <- ifelse(pred.logit2 > 0.5, 1, 0)
+misClassError2 <- mean(fitted.results2 != test$outcomebinomial, na.rm=TRUE)
+print(paste('Accuracy',1-misClassError2))
+
+#Logistic Regression Model 3
+
+logit.vote3 = glm(outcomebinomial~  WageTtl + 
+                             popDens + longitude + YCO2limits + Yhuman  + Yconsensus +	Ypersonal ,data=sub12t, family=binomial)
+summary(logit.vote3)
+pred.logit3 <- predict(logit.vote3, newdata=test, type="response")
+fitted.results3 <- ifelse(pred.logit3 > 0.5, 1, 0)
+misClassError3 <- mean(fitted.results3 != test$outcomebinomial, na.rm=TRUE)
+print(paste('Accuracy',1-misClassError3))
+
+#Logistic 4:
+
+logit.vote4 = glm(outcomebinomial~  DrugFR+Obese+Pov+medInc+incomePercent+pop+civLab+emp+unempR+
+			college+pctBlack+pctAsian+pctHispanic+pctWhite+pctForeign+WageMfg+popDens+landArea+
+			 + Ydiscuss + YCO2limits + Yfundrenewables + Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
+                          YharmUS ,data=sub12t, family=binomial)
+summary(logit.vote4)
+pred.logit4 <- predict(logit.vote4, newdata=test, type="response")
+fitted.results4 <- ifelse(pred.logit4 > 0.5, 1, 0)
+misClassError4 <- mean(fitted.results4 != test$outcomebinomial, na.rm=TRUE)
+print(paste('Accuracy',1-misClassError4))
+
+# temp forest:
+set.seed(300)
+forest.vote4 = randomForest(outcome~  DrugFR+Obese+Pov+medInc+incomePercent+pop+civLab+emp+unempR+
+			college+pctBlack+pctAsian+pctHispanic+pctWhite+pctForeign+WageMfg+popDens+landArea+
+			 + Ydiscuss + YCO2limits + Yfundrenewables + Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
+                          YharmUS ,data=sub12t)
+summary(forest.vote4)
+importance(forest.vote4)
+pred.forest4=predict(forest.vote4)
+table(sub12t$outcome, pred.forest4)
+#accuracy:
+(706+2137)/(706+2137+179+109)
+# Testing on the test set:
+test$pred.forest4 <- predict(forest.vote4, newdata=test, type="response")
+test$forestoutcome <- NA
+for (i in 1:length(test)) {
+	if (test$pred.forest4[i] == 'Rep') {
+		test$forestoutcome[i] <- 1
+	} else {
+		test$forestoutcome[i] <- 0
+	}
+}
+
+
+fitted.results4f <- ifelse(test$forestoutcome > 0.5, 1, 0)
+misClassError4f <- mean(fitted.results4f != test$outcomebinomial, na.rm=TRUE)
+print(paste('Accuracy',1-misClassError4f))
+
+

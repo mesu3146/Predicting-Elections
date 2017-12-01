@@ -252,6 +252,7 @@ vote16 <- table(validation$RorD,pred.vote16)
 library(gbm)
 set.seed(300)
 
+
 boost.vote2 <- gbm(RorD~ mfgEmp + medInc + intMig + domMig + civLab + EmpTtl + WageMfg + WageTtl + 
                      landArea + popDens + latitude + longitude + Ydiscuss + YCO2limits + Yfundrenewables +Yhappening +
                      Yhuman +	YharmplantsOppose + Ytiming + Yconsensus +	Yworried+	Ypersonal +
@@ -260,31 +261,94 @@ boost.vote2 <- gbm(RorD~ mfgEmp + medInc + intMig + domMig + civLab + EmpTtl + W
 pred.vote2 <- predict(boost.vote2,n.trees=1000,type="response")
 table(sub12$RorD,pred.vote2)
 summary(boost.vote2)
+
+#sub16 for ROC
+CUTOFF <- .4
+pred.voteRR <- as.integer(predict(boost.vote2,sub16, n.trees=1000,type="response")>CUTOFF)
+
+table(sub16$RorD,pred.voteRR)
+vote16 <-  table(sub16$RorD,pred.voteRR)
+(vote16[1] + vote16[4]) / (vote16[1] + vote16[2] + vote16[3] + vote16[4])
+
 #predict 2016 boosting (for votes by state)
 pred.vote16.2 <- predict(boost.vote2,sub16,n.trees=1000,type="response")
 vote16.2 <- table(sub16$RorD,pred.vote16.2)
 sub16v <-cbind(sub16,pred.vote16.2)
 
-#votes per county
-sub16v$Dvote <- round(sub16v$Totalvote*pred.vote16.2,0)
-sub16v$Rvote <- sub16v$Totalvote - sub16v$Dvote
+pred <- as.integer(pred.vote16.2 > .5)
+conf.16 <- table(sub16$RorD, pred)
+(conf.16[1] + conf.16[4])/(conf.16[1]+conf.16[2]+conf.16[3]+conf.16[4])
 
+#for random forest..
+forest16prob <- predict(forest.vote,sub16,type ='prob')
+forest16prob2 <- as.vector(forest16prob[,1])
+predForest <- round(forest16prob,0)
+preForestV <- as.vector(predForest[,1])
+conff.16 <- table(sub16$RorD, preForestV)
+(conff.16[1] + conff.16[4])/(conff.16[1]+conff.16[2]+conff.16[3]+conff.16[4])
+
+# we can't use total votes because technically we shouldnt' know total votes. determine % of pop voted in 2008, 2012..
+election[,8:116] <- sapply(election[8:116], as.numeric)
+election$pct2008 <- election$Total08/election$pop08
+election$pct2012 <- election$Total12/election$pop12
+election$avgVote <- rowMeans(subset(election, select = c(pct2008, pct2012)), na.rm = TRUE)
+election$vote2016 <- round(election$pop16 * election$avgVote,0)
+(election$Total16 - election$vote2016)/election$Total16
+
+sub16v <- merge(sub16v,election[,c('fips','vote2016')], by = c('fips'))
+head(sub16v)
+#votes per county
+
+#for boosted
+sub16v$Dvote <- round(sub16v$vote2016*pred.vote16.2,0)
+sub16v$Rvote <- sub16v$vote2016 - sub16v$Dvote
+
+#for forest
+sub16v$Dvote <- round(sub16v$vote2016*forest16prob2,0)
+sub16v$Rvote <- sub16v$vote2016- sub16v$Dvote
 #aggregate votes by state
 library("data.table")
 sub16v <- as.data.table(sub16v)
 setkey(sub16v,state)
-head(sub16)
-sub16v <- sub16v[,list(republicanP = sum(Rvote, na.rm = TRUE),republicanA = sum(rep, na.rm = TRUE),
-                       democratP = sum(Dvote, na.rm = TRUE), democratA = sum(dem, na.rm = TRUE)), by = 'state']
+sub16A <- sub16v[,list(republicanP = sum(Rvote, na.rm = TRUE),republicanA = sum(rep, na.rm = TRUE),
+                       democratP = sum(Dvote, na.rm = TRUE), democratA = sum(dem, na.rm = TRUE), Obese = mean(Obese), DrugFR = mean(DrugFR), mfgEmp = mean(mfgEmp)
+                       ,Pov = mean(Pov), popDens = mean(popDens), intMig = mean(intMig), civLab = mean(civLab), Ydiscuss = mean(Ydiscuss), 
+                       YCO2limits = mean(YCO2limits), Yfundrenewables = mean(Yfundrenewables), Yhappening = mean(Yhappening), Yhuman = mean(Yhuman), 
+                       YharmplantsOppose = mean(YharmplantsOppose), Ytiming = mean(Ytiming), Yconsensus = mean(Yconsensus), Yworried = mean(Yworried)), by = 'state']
 
 #if rep votes > than dem votes, 0 else 1
-sub16v$RorDp <- ifelse(sub16v$republicanP > sub16v$democratP, 0 ,1)  
-sub16v$RorDa <- ifelse(sub16v$republicanA > sub16v$democratA, 0 ,1)  
+sub16A$RorDp <- ifelse(sub16A$republicanP > sub16A$democratP, 0 ,1)  
+sub16A$RorDa <- ifelse(sub16A$republicanA > sub16A$democratA, 0 ,1)  
 
 #predicted democratic states
-sum(sub16v$RorDp)
+sum(sub16A$RorDp)
 #actual democratic states
-sum(sub16v$RorDa)
+sum(sub16A$RorDa)
+#incorrect states
+error16 <- sub16A[sub16A$RorDa != sub16A$RorDp,]
+error16[,c('state','RorDp','RorDa')]
+tail(sub16A)
+
+
+electoralVotes <- read.csv('electoralVotes.csv')
+
+electoralVotes <- electoralVotes[order(electoralVotes$stateAb),]
+sub16A <- cbind(sub16A,electoralVotes$EV)
+
+#election2016 <- write.csv(sub16A, file = '2016election.csv')
+
+#actual vs. predicted electoral votes
+sub16A$actualDemEVs <- sub16A$RorDa*sub16A$V2
+sub16A$predictedDemEVs <- sub16A$RorDp*sub16A$V2
+sub16A$actualRepEVs <-  sub16A$V2 - sub16A$actualDemEVs
+sub16A$predictedRepEVs <- sub16A$V2 - sub16A$predictedDemEVs
+
+##these are off by about 20? 
+sum(sub16A$actualDemEVs)
+sum(sub16A$actualRepEVs)
+
+sum(sub16A$predictedDemEVs)
+sum(sub16A$predictedRepEVs)
 
 
 #regression
